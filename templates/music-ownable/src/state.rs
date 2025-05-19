@@ -1,20 +1,10 @@
-use cosmwasm_std::Addr;
-use cw_storage_plus::Item;
-use ownables_std::OwnableType;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use cw_storage_plus::Item;
 use ownable_std::{Metadata, NFT, OwnableInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
-    pub name: String,
-    pub description: String,
-    pub owner: Addr,
-    pub locked: bool,
-    pub ownable_type: OwnableType,
-}
-
-pub const STATE: Item<State> = Item::new("state");
+pub struct Config {}
 
 pub const CONFIG: Item<Option<Config>> = Item::new("config");
 pub const OWNABLE_INFO: Item<OwnableInfo> = Item::new("ownable_info");
