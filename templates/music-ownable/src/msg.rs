@@ -11,11 +11,7 @@ use ownable_std::NFT;
 #[ownables_instantiate_msg]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct InstantiateMsg {
-    pub network_id: u8,
-    pub package: String,
-    pub nft: Option<NFT>,
-}
+pub struct InstantiateMsg {}
 
 #[ownables_transfer]
 #[ownables_lock]
