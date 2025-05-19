@@ -13,17 +13,25 @@ use ownable_std::NFT;
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
 #[ownables_transfer]
 #[ownables_lock]
-pub enum ExecuteMsg {}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub enum ExecuteMsg {
+    Transfer { to: Addr },
+    Lock {},
+}
+
 #[ownables_query_info]
 #[ownables_query_locked]
 #[ownables_query_metadata]
 #[ownables_query_widget_state]
-pub enum QueryMsg {}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    GetInfo {},
+    GetMetadata {},
+    GetWidgetState {},
+    IsLocked {},
+}
 
