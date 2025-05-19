@@ -68,7 +68,3 @@ The CLI will provide clear error messages if:
 - Project structure is invalid
 - Build process fails
 - Schema generation fails
-
-## License
-
-ISC
