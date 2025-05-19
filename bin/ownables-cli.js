@@ -3,7 +3,7 @@
 const { program } = require("commander");
 const chalk = require("chalk");
 const { create } = require("../lib/commands/create");
-const { build } = require("../lib/commands/build");
+const { build, clean } = require("../lib/commands/build");
 
 program
   .name("ownables-cli")
@@ -24,10 +24,22 @@ program
 
 program
   .command("build")
-  .description("Build an Ownable from the current directory")
+  .description("Build the Ownable project")
   .action(async () => {
     try {
       await build();
+    } catch (error) {
+      console.error(chalk.red("Error:"), error.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("clean")
+  .description("Clean build cache (build and target directories)")
+  .action(async () => {
+    try {
+      await clean(process.cwd());
     } catch (error) {
       console.error(chalk.red("Error:"), error.message);
       process.exit(1);
