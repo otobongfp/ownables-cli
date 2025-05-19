@@ -66,6 +66,9 @@ pub fn execute(
     match msg {
         ExecuteMsg::Transfer { to } => try_transfer(info, deps, to),
         ExecuteMsg::Lock {} => try_lock(info, deps),
+        _ => Err(ContractError::NotImplemented {
+            msg: format!("Unsupported execute message: {:?}", msg)
+        }),
     }
 }
 
@@ -235,6 +238,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetMetadata {} => query_ownable_metadata(deps),
         QueryMsg::GetWidgetState {} => query_ownable_widget_state(deps),
         QueryMsg::IsLocked {} => query_lock_state(deps),
+        _ => Err(StdError::generic_err(format!("Unsupported query message: {:?}", msg))),
     }
 }
 
