@@ -66,7 +66,6 @@ pub fn execute(
     match msg {
         ExecuteMsg::Transfer { to } => try_transfer(info, deps, to),
         ExecuteMsg::Lock {} => try_lock(info, deps),
-        _ => Err(ContractError::NotImplemented {}),
     }
 }
 
