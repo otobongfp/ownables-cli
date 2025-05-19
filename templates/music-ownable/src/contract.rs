@@ -6,6 +6,7 @@ use cosmwasm_std::{Binary, to_json_binary};
 use cw2::set_contract_version;
 use crate::state::{NFT_ITEM, CONFIG, METADATA, LOCKED, PACKAGE_CID, OWNABLE_INFO, NETWORK_ID};
 use ownable_std::{address_eip155, address_lto, ExternalEventMsg, InfoResponse, Metadata, OwnableInfo};
+use ownables_std::{Metadata, OwnableType};
 
 // version info for migration info
 const CONTRACT_NAME: &str = PLACEHOLDER4_CONTRACT_NAME;
@@ -51,6 +52,16 @@ pub fn instantiate(
     OWNABLE_INFO.save(deps.storage, &ownable_info)?;
     PACKAGE_CID.save(deps.storage, &msg.package)?;
 
+    let state = State {
+        name: msg.name,
+        description: msg.description,
+        owner: info.sender,
+        locked: false,
+        ownable_type: OwnableType::Music,
+    };
+
+    STATE.save(deps.storage, &state)?;
+
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", derived_addr.clone())
@@ -64,63 +75,30 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Transfer { to } => try_transfer(info, deps, to),
-        ExecuteMsg::Lock {} => try_lock(info, deps),
-    }
-}
-
-pub fn try_lock(info: MessageInfo, deps: DepsMut) -> Result<Response, ContractError> {
-    // only ownable owner can lock it
-    let ownership = OWNABLE_INFO.load(deps.storage)?;
-    let network = NETWORK_ID.load(deps.storage)?;
-    let network_id = network as char;
-    if address_lto(network_id, info.sender.to_string())? != ownership.owner {
-        return Err(ContractError::Unauthorized {
-            val: "Unauthorized".into(),
-        });
-    }
-
-    let is_locked = LOCKED.update(
-        deps.storage,
-        |mut is_locked| -> Result<_, ContractError> {
-            if is_locked {
-                return Err(
-                    ContractError::LockError { val: "Already locked".to_string() }
-                );
+        ExecuteMsg::Transfer { recipient } => {
+            let mut state = STATE.load(deps.storage)?;
+            if info.sender != state.owner {
+                return Err(ContractError::Unauthorized {});
             }
-            is_locked = true;
-            Ok(is_locked)
+            if state.locked {
+                return Err(ContractError::Locked {});
+            }
+            state.owner = recipient;
+            STATE.save(deps.storage, &state)?;
+            Ok(Response::new()
+                .add_attribute("method", "transfer")
+                .add_attribute("new_owner", state.owner))
         }
-    )?;
-
-    Ok(Response::new()
-        .add_attribute("method", "try_lock")
-        .add_attribute("is_locked", is_locked.to_string())
-    )
-}
-
-pub fn try_transfer(info: MessageInfo, deps: DepsMut, to: Addr) -> Result<Response, ContractError> {
-    let network_id = NETWORK_ID.load(deps.storage)?;
-    let address = address_lto(network_id as char, info.sender.to_string())?;
-
-    OWNABLE_INFO.update(deps.storage, |mut config| -> Result<_, ContractError> {
-        if address != config.owner {
-            return Err(ContractError::Unauthorized {
-                val: "Unauthorized transfer attempt".to_string(),
-            });
+        ExecuteMsg::Lock {} => {
+            let mut state = STATE.load(deps.storage)?;
+            if info.sender != state.owner {
+                return Err(ContractError::Unauthorized {});
+            }
+            state.locked = true;
+            STATE.save(deps.storage, &state)?;
+            Ok(Response::new().add_attribute("method", "lock"))
         }
-        if address == to {
-            return Err(ContractError::CustomError {
-                val: "Unable to transfer: Recipient address is current owner".to_string(),
-            });
-        }
-        config.owner = to.clone();
-        Ok(config)
-    })?;
-    Ok(Response::new()
-        .add_attribute("method", "try_transfer")
-        .add_attribute("new_owner", to.to_string())
-    )
+    }
 }
 
 pub fn register_external_event(
@@ -228,48 +206,47 @@ fn try_register_lock(
     }
 }
 
-
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetInfo {} => query_ownable_info(deps),
-        QueryMsg::GetMetadata {} => query_ownable_metadata(deps),
-        QueryMsg::GetWidgetState {} => query_ownable_widget_state(deps),
-        QueryMsg::IsLocked {} => query_lock_state(deps),
+        QueryMsg::GetInfo {} => to_binary(&query_info(deps)?),
+        QueryMsg::IsLocked {} => to_binary(&query_locked(deps)?),
+        QueryMsg::GetMetadata {} => to_binary(&query_metadata(deps)?),
+        QueryMsg::GetWidgetState {} => to_binary(&query_widget_state(deps)?),
     }
 }
 
-fn query_ownable_widget_state(deps: Deps) -> StdResult<Binary> {
-    let widget_config = CONFIG.load(deps.storage)?;
-    to_json_binary(&widget_config)
-}
-
-fn query_lock_state(deps: Deps) -> StdResult<Binary> {
-    let is_locked = LOCKED.load(deps.storage)?;
-    to_json_binary(&is_locked)
-}
-
-fn query_ownable_info(deps: Deps) -> StdResult<Binary> {
-    let nft = NFT_ITEM.may_load(deps.storage)?;
-    let ownable_info = OWNABLE_INFO.load(deps.storage)?;
-    to_json_binary(&InfoResponse {
-        owner: ownable_info.owner,
-        issuer: ownable_info.issuer,
-        nft,
-        ownable_type: ownable_info.ownable_type,
+fn query_info(deps: Deps) -> StdResult<InfoResponse> {
+    let state = STATE.load(deps.storage)?;
+    Ok(InfoResponse {
+        name: state.name,
+        description: state.description,
+        ownable_type: state.ownable_type,
     })
 }
 
-fn query_ownable_metadata(deps: Deps) -> StdResult<Binary> {
-    let cw721 = METADATA.load(deps.storage)?;
-    to_json_binary(&Metadata {
-        image: cw721.image,
-        image_data: cw721.image_data,
-        external_url: cw721.external_url,
-        description: cw721.description,
-        name: cw721.name,
-        background_color: cw721.background_color,
-        animation_url: cw721.animation_url,
-        youtube_url: cw721.youtube_url,
+fn query_locked(deps: Deps) -> StdResult<bool> {
+    let state = STATE.load(deps.storage)?;
+    Ok(state.locked)
+}
+
+fn query_metadata(deps: Deps) -> StdResult<MetadataResponse> {
+    let state = STATE.load(deps.storage)?;
+    Ok(MetadataResponse {
+        metadata: Metadata {
+            name: state.name,
+            description: state.description,
+            ownable_type: state.ownable_type,
+        },
+    })
+}
+
+fn query_widget_state(deps: Deps) -> StdResult<WidgetStateResponse> {
+    let state = STATE.load(deps.storage)?;
+    Ok(WidgetStateResponse {
+        state: format!(
+            r#"{{"name":"{}","description":"{}","type":"music"}}"#,
+            state.name, state.description
+        ),
     })
 }
 

@@ -7,6 +7,7 @@ use ownable_std_macros::{
     ownables_query_widget_state, ownables_instantiate_msg
 };
 use ownable_std::NFT;
+use ownables_std::{Metadata, OwnableType};
 
 #[ownables_instantiate_msg]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -18,7 +19,7 @@ pub struct InstantiateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Transfer { to: Addr },
+    Transfer { recipient: Addr },
     Lock {},
 }
 
@@ -30,8 +31,25 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetInfo {},
+    IsLocked {},
     GetMetadata {},
     GetWidgetState {},
-    IsLocked {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct InfoResponse {
+    pub name: String,
+    pub description: String,
+    pub ownable_type: OwnableType,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MetadataResponse {
+    pub metadata: Metadata,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct WidgetStateResponse {
+    pub state: String,
 }
 
