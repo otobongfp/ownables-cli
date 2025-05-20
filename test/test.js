@@ -6,7 +6,6 @@ const path = require("path");
 async function runTests() {
   console.log("Running tests...");
 
-  // Test 1: Check prerequisites
   try {
     await build();
     console.log("✓ Build process completed successfully");
@@ -15,7 +14,6 @@ async function runTests() {
     process.exit(1);
   }
 
-  // Test 2: Check if output files exist
   const cwd = process.cwd();
   const projectName = path.basename(cwd);
   const zipFile = path.join(cwd, `${projectName}.zip`);
